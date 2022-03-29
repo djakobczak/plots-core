@@ -1,0 +1,26 @@
+docker_open5gs
+557MB
+
+unique: 484.6MB
+
+ubuntu20 (shared size)
+72.8MB
+
+REPOSITORY                         TAG       IMAGE ID       CREATED        SIZE      SHARED SIZE   UNIQUE SIZE   CONTAINERS
+docker_open5gs                     latest    13df58f7f4db   4 weeks ago    557.4MB   72.78MB       484.6MB       10
+ubuntu                             focal     54c9d81cbb44   7 weeks ago    72.78MB   72.78MB       0B            0
+docker_mongo                       latest    6ab944ec48ea   2 weeks ago    276.9MB   72.78MB       204.1MB       1
+
+Running containers
+CONTAINER ID   IMAGE            COMMAND                  LOCAL VOLUMES   SIZE      CREATED          STATUS          NAMES
+b72e4f6af3e4   docker_open5gs   "/bin/sh -c /open5gs…"   0               718B      31 minutes ago   Up 31 minutes   amf
+a16e8395bf94   docker_open5gs   "/bin/sh -c /open5gs…"   0               538B      31 minutes ago   Up 31 minutes   upf
+f1918233e969   docker_open5gs   "/bin/sh -c /open5gs…"   0               203B      31 minutes ago   Up 31 minutes   udm
+72ea27c35de5   docker_open5gs   "/bin/sh -c /open5gs…"   0               241B      31 minutes ago   Up 31 minutes   udr
+049d9f1806e9   docker_open5gs   "/bin/sh -c /open5gs…"   0               205B      31 minutes ago   Up 31 minutes   ausf
+471293f7901b   docker_open5gs   "/bin/sh -c /open5gs…"   0               293B      31 minutes ago   Up 31 minutes   nssf
+be24b66278b5   docker_open5gs   "/bin/sh -c /open5gs…"   0               32.2kB    31 minutes ago   Up 31 minutes   smf
+70c2e1391b9a   docker_open5gs   "/bin/sh -c /open5gs…"   0               241B      31 minutes ago   Up 31 minutes   pcf
+fd6149739870   docker_open5gs   "/bin/sh -c /open5gs…"   0               241B      31 minutes ago   Up 31 minutes   bsf
+8c26153835bc   docker_open5gs   "/bin/sh -c /open5gs…"   0               137B      31 minutes ago   Up 31 minutes   nrf
+74514c41d4b4   docker_mongo     "/bin/sh -c /mnt/mon…"   1               4.84kB    31 minutes ago   Up 31 minutes   mongo
