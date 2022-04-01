@@ -13,6 +13,7 @@ import utils
 # TEST_DIR = Path('..', 'vms-split', 'test-connect-ues', 'test-18-56-26-071935')  # 30 30
 # TEST_DIR = Path('..', 'vms-split', 'test-connect-ues', 'test-18-34-04-266416')  # 20 30
 TEST_DIR = Path('..', 'vms-split', 'test-connect-ues', 'test-20-07-59-122517')  # 10 30
+TEST_DIR = Path('..', 'vms-split', 'test-uplane', 'test-22-03-03-128862')  # 10 30
 # TEST_DIR = Path('..', 'vms-split', 'test-connect-ues', 'test-22-43-15-073106') # old
 # TEST_DIR = Path('..', 'vms-split', 'test-connect-ues', '')  # 10 30
 virt_top_file = next(path for path in TEST_DIR.iterdir() if 'host_virt' in str(path))
@@ -44,16 +45,20 @@ def _first_el_of_col(df, col_name):
 # print(df_virt)
 # sys.exit()
 
-start_time, n_ues, duration = utils.read_general_file(f'{TEST_DIR}/general.log')
+general_file = f'{TEST_DIR}/general.log'
+# start_time, n_ues, duration = utils.read_general_file(general_file)
+start_time, n_ues, duration = utils.read_general_file(general_file, 'VUS', 'STRESS_DURATION')
+
 
 # START_TIME_SCRIPT="get_test_start.sh"
 # cmd = ['bash', START_TIME_SCRIPT, f'{TEST_DIR}/general.log', 's']
 # start_time = datetime.strptime(subprocess.run(cmd, capture_output=True)\
 #     .stdout.decode("utf-8").strip(), '%H:%M:%S')
 # test_time = 20 # TODO grep
-end_time = start_time + timedelta(0, duration)
+start_time += timedelta(0, 20)
+end_time = start_time + timedelta(0, duration + 2)
 
-mask = df_virt['Time'].between(start_time, end_time)
+mask = df_virt['Time'].between(start_time , end_time)
 df_tidy = df_virt[mask]
 # print(df_tidy['Time'].iloc[0])
 
@@ -107,22 +112,22 @@ plot(
     nf_cpu_perc_cols,
     nf_names_cols,
     'Obciążenie systemu [%]',
-    f'Porównanie obciążenia procesora przez funkcje sieciowe [VM {n_ues}ue]',
+    f'Porównanie obciążenia procesora przez funkcje sieciowe [vms uplane_test]',
     save=True
 )
-plot(
-    df_tidy,
-    nf_net_rx_cum_cols,
-    nf_names_cols,
-    'Rx [B]',
-    f'Porównanie obciążenia interfejsów sieciowych [VM Rx {n_ues}ue]',
-    save=True
-)
-plot(
-    df_tidy,
-    nf_net_tx_cum_cols,
-    nf_names_cols,
-    'Tx [B]',
-    f'Porównanie obciążenia interfejsów sieciowych [VM Tx {n_ues}ue]',
-    save=True
-)
+# plot(
+#     df_tidy,
+#     nf_net_rx_cum_cols,
+#     nf_names_cols,
+#     'Rx [B]',
+#     f'Porównanie obciążenia interfejsów sieciowych [VM Rx {n_ues}ue uplane_test]',
+#     save=True
+# )
+# plot(
+#     df_tidy,
+#     nf_net_tx_cum_cols,
+#     nf_names_cols,
+#     'Tx [B]',
+#     f'Porównanie obciążenia interfejsów sieciowych [VM Tx {n_ues}ue uplane_test]',
+#     save=True
+# )
