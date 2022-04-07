@@ -41,6 +41,8 @@ def read_docker_stats(start_time, end_time, docker_stats_file):
             if unit == 'kB':
                 val *= 1024
             elif unit == 'MB':
+                val *= 1000*1000
+            elif unit == 'MiB':
                 val *= 1024*1024
             return val
 
@@ -139,8 +141,8 @@ def prepare_df(test_dir: Path):
     stat_df = utils.concat_multiple_logs(test_dir, read_sample)  # long format
     tidy_df = stat_df.groupby(['nf_name', 'index']).agg(['mean', 'std']).reset_index()
     n_samples = len(tidy_df[tidy_df['nf_name'] == 'amf'])
-    tidy_df['cpu', 'ci_lower'], tidy_df['cpu', 'ci_upper'] = utils.calc_conf_int(tidy_df, 'cpu', n_samples)
-    tidy_df['mem', 'ci_lower'], tidy_df['mem', 'ci_upper'] = utils.calc_conf_int(tidy_df, 'mem', n_samples)
+    tidy_df['cpu', 'ci_lower'], tidy_df['cpu', 'ci_upper'], tidy_df['cpu', 'err'] = utils.calc_conf_int(tidy_df, 'cpu', n_samples)
+    tidy_df['mem', 'ci_lower'], tidy_df['mem', 'ci_upper'], tidy_df['mem', 'err'] = utils.calc_conf_int(tidy_df, 'mem', n_samples)
     return tidy_df
 
 
@@ -155,7 +157,10 @@ TEST_DIR = Path('..', 'containers', 'test-connect-ues', 'test-15-43-11-256898') 
 TEST_IDLE_DIR =  Path('..', 'containers', 'test-idle')
 df = prepare_df(TEST_IDLE_DIR)
 # nf_names = df['nf_name'].unique()
+df = df[~df['nf_name'].str.contains('ue')]
+df = df[~df['nf_name'].str.contains('gnb')]
 mean_df = df.groupby('nf_name').mean()
+mean_df.columns = mean_df.columns.map('_'.join)
 mean_df.to_csv('mean_idle_docker.csv')
 print(mean_df)
 

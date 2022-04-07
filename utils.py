@@ -37,12 +37,14 @@ def read_general_file(path, n_ues_line = 'N_UES', n_iterations_line = 'N_ITERATI
 
 def calc_conf_int(df, col, n_samples, confidence = 0.05):
     # n = len(df[df['nf_name'] == 'amf'])
+    print(df[col, 'mean'], n_samples)
+    print(n_samples)
     h = df[col, 'std'] * scipy.stats.t.ppf((1 + confidence) / 2., n_samples-1)
     m = df[col, 'mean']
-    return m - h, m + h
+    return m - h, m + h, h
 
 
-def concat_multiple_logs(test_dir: Path, read_sample_func: Callable):
+def concat_multiple_logs(test_dir: Path, read_sample_func: Callable, **kwargs):
     stat_df = pd.DataFrame()
     for sample_dir in test_dir.iterdir():
         # garbage
@@ -50,7 +52,12 @@ def concat_multiple_logs(test_dir: Path, read_sample_func: Callable):
             print(f'[DEBUG] skip {sample_dir}...')
             continue
 
-        print(f'[DEBUG] read {sample_dir}.........')
-        df = read_sample_func(sample_dir)
+        print(f'[DEBUG] read {sample_dir}...')
+        df = read_sample_func(sample_dir, **kwargs)
+        print(df)
         stat_df = pd.concat((stat_df, df))
     return stat_df
+
+
+def _to_ms_numeric_timedelta(delta):
+    return delta.astype('timedelta64[us]') / 1e6
