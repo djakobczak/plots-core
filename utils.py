@@ -6,6 +6,38 @@ import scipy.stats
 import pandas as pd
 
 
+COLORS = {
+    'docker': 'royalblue',
+    'kvm': 'seagreen'
+}
+
+NF_COLORS = {
+    'amf': 'red',
+    'ausf': 'blue',
+    'bsf': 'g',
+    'db': 'k',
+    'nrf': 'c',
+    'nssf': 'm',
+    'pcf': 'coral',
+    'smf': 'navy',
+    'udm': 'brown',
+    'udr': 'teal',
+    'upf': 'gold'
+}
+
+NF_NAMES = NF_COLORS.keys()
+
+def get_color(nf_name):
+    return next(
+        color for name, color in NF_COLORS.items() if name in nf_name
+    )
+
+def get_nf_name(nf_name):
+    return next(
+        name for name in NF_NAMES if name in nf_name
+    )
+
+
 def find_in_iterdir(dir_path: Path, fn_part: str) -> Path:
     dir_path = Path(dir_path)
     return next(
@@ -37,8 +69,6 @@ def read_general_file(path, n_ues_line = 'N_UES', n_iterations_line = 'N_ITERATI
 
 def calc_conf_int(df, col, n_samples, confidence = 0.05):
     # n = len(df[df['nf_name'] == 'amf'])
-    print(df[col, 'mean'], n_samples)
-    print(n_samples)
     h = df[col, 'std'] * scipy.stats.t.ppf((1 + confidence) / 2., n_samples-1)
     m = df[col, 'mean']
     return m - h, m + h, h
@@ -54,7 +84,6 @@ def concat_multiple_logs(test_dir: Path, read_sample_func: Callable, **kwargs):
 
         print(f'[DEBUG] read {sample_dir}...')
         df = read_sample_func(sample_dir, **kwargs)
-        print(df)
         stat_df = pd.concat((stat_df, df))
     return stat_df
 
