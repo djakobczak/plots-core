@@ -16,6 +16,7 @@ NF_COLORS = {
     'ausf': 'blue',
     'bsf': 'g',
     'db': 'k',
+    'mongo': 'k',
     'nrf': 'c',
     'nssf': 'm',
     'pcf': 'coral',
@@ -41,8 +42,8 @@ def get_nf_name(nf_name):
 def find_in_iterdir(dir_path: Path, fn_part: str) -> Path:
     dir_path = Path(dir_path)
     return next(
-        path for path in dir_path.iterdir()
-        if fn_part in str(path)
+        (path for path in dir_path.iterdir()
+        if fn_part in str(path)), None
     )
 
 
@@ -67,9 +68,9 @@ def read_general_file(path, n_ues_line = 'N_UES', n_iterations_line = 'N_ITERATI
     return timestamp, n_ues, n_iterations
 
 
-def calc_conf_int(df, col, n_samples, confidence = 0.05):
-    # n = len(df[df['nf_name'] == 'amf'])
-    h = df[col, 'std'] * scipy.stats.t.ppf((1 + confidence) / 2., n_samples-1)
+def calc_conf_int(df, col, n_samples, confidence=0.95):
+    print(df[col, 'std'])
+    h = (df[col, 'std']/np.sqrt(n_samples)) * scipy.stats.t.ppf((1 + confidence) / 2., n_samples-1)
     m = df[col, 'mean']
     return m - h, m + h, h
 
@@ -90,3 +91,7 @@ def concat_multiple_logs(test_dir: Path, read_sample_func: Callable, **kwargs):
 
 def _to_ms_numeric_timedelta(delta):
     return delta.astype('timedelta64[us]') / 1e6
+
+
+def add_stat_err(df, stat, n_samples):
+    df[stat, 'ci_lower'], df[stat, 'ci_upper'], df[stat, 'err'] = calc_conf_int(df, stat, n_samples)

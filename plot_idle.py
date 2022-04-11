@@ -44,7 +44,9 @@ df_docker = pd.read_csv('mean_idle_docker.csv')
 nf_names = ['amf', 'ausf', 'bsf', 'db',
             'nrf', 'nssf', 'pcf', 'smf',
             'udm', 'udr', 'upf']
+df_docker = df_docker.drop(df_docker[df_docker['nf_name'] == 'nr_gnb'].index)
 df_docker['nf_name'] = nf_names
+print(df_docker)
 df_docker_cpu = df_docker[['nf_name', 'cpu_mean', 'cpu_ci_lower', 'cpu_ci_upper', 'cpu_err']]
 df_vms_cpu = df_vms[['Domain name_', '%CPU_mean', '%CPU_ci_lower', '%CPU_ci_upper', '%CPU_err']]
 df_vms_cpu.rename(columns={
