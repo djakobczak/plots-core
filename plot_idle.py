@@ -27,7 +27,7 @@ def plot_mem(df_docker_mem, df_vms_mem, nf_names):
     ind = np.arange(11)  # the x locations for the groups
     docker_plot = ax.bar(ind, df_docker_mem['mem_mean'], BAR_WIDTH, color='royalblue', yerr=df_docker_mem['mem_err'], capsize=3)
     vm_plot = ax.bar(ind+BAR_WIDTH, df_vms_mem['mem_mean'], BAR_WIDTH, color='seagreen', yerr=df_vms_mem['mem_err'], capsize=3)
-    ax.set_ylabel('RSS [MiB]')
+    ax.set_ylabel('Zużycie pamięci [MiB]')
     ax.set_xlabel('Funkcje sieciowe')
     ax.set_title('Zużycie pamięci przez funkcje sieciowe w stanie bezczynności')
     ax.set_xticks(ind + BAR_WIDTH / 2)
