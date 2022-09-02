@@ -5,9 +5,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import scipy.stats
+import matplotlib
 
 
-test_dir_vms = Path('..', 'vms-split', 'test-rtt')
+test_dir_vms_virtio = Path('..', 'vms-split', 'test-rtt-virtio-net')
+test_dir_vms_vhost = Path('..', 'vms-split', 'test-rtt-vhost-net')
 test_dir_containers = Path('..', 'containers', 'test-rtt')
 
 SUMMARY_REGEX = r'^rtt'
@@ -50,29 +52,33 @@ def read_sample(sample_dir, test_type):
     return read_ping_log(ping_log_file, test_type)
 
 
-def prepare_df(test_dir_vms, test_dir_containers):
-    stat_df_vms = utils.concat_multiple_logs(test_dir_vms, read_sample, test_type='kvm')  #https://stats.stackexchange.com/questions/55999/is-it-possible-to-find-the-combined-standard-deviation
+def prepare_df(test_dir_vms_virtio, test_dir_vms_vhost, test_dir_containers):
+    stat_df_vms_virtio = utils.concat_multiple_logs(test_dir_vms_virtio, read_sample, test_type='kvm/virtio-net')  #https://stats.stackexchange.com/questions/55999/is-it-possible-to-find-the-combined-standard-deviation
+    stat_df_vms_vhost = utils.concat_multiple_logs(test_dir_vms_vhost, read_sample, test_type='kvm/vhost-net')  #https://stats.stackexchange.com/questions/55999/is-it-possible-to-find-the-combined-standard-deviation
     stat_df_containers = utils.concat_multiple_logs(test_dir_containers, read_sample, test_type='docker')
-    df_concat = pd.concat((stat_df_vms, stat_df_containers))
+    df_concat = pd.concat((stat_df_vms_virtio, stat_df_vms_vhost, stat_df_containers))
     return df_concat
 
+matplotlib.rcParams.update({'font.size': 20})
 
-df = prepare_df(test_dir_vms, test_dir_containers)
+df = prepare_df(test_dir_vms_virtio, test_dir_vms_vhost, test_dir_containers)
+print(df)
 df_mean = df.groupby(['type']).agg(['mean', 'std']).reset_index()
 n_samples = len(df) // 2
 utils.add_stat_err(df_mean, 'avg_rtt', n_samples)
 df_mean.columns = df_mean.columns.map('_'.join)
-df_mean.plot.bar(
+ax = df_mean.plot.bar(
     x='type_',
     y='avg_rtt_mean',
     rot=0,
     color=utils.COLORS.values(),
-    xlabel='Typ wirtualizacji',
+    xlabel='Platforma wirtualizacji',
     ylabel='RTT [ms]',
-    title='Porównanie opóźnienia płaszczyzny użytkownika',
     yerr='avg_rtt_err',
-    capsize=2,
-    legend=False
+    capsize=5,
+    legend=False,
+    figsize=(14,10)
 )
-plt.savefig('user_plane_rtt.png')
+# ax.axhline(y=0.32, xmin=0, xmax=1, ls='--', color='red')  # 160s measurment
+plt.savefig('user_plane_rtt_v2.png')
 plt.show()

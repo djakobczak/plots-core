@@ -8,7 +8,9 @@ import pandas as pd
 
 COLORS = {
     'docker': 'royalblue',
-    'kvm': 'seagreen'
+    'kvm-vhost-net': 'seagreen',
+    'kvm-virtio-net': 'mediumseagreen',
+    'kvm': 'seagreen',
 }
 
 NF_COLORS = {
@@ -23,7 +25,7 @@ NF_COLORS = {
     'smf': 'navy',
     'udm': 'brown',
     'udr': 'teal',
-    'upf': 'gold'
+    'upf': 'goldenrod'
 }
 
 NF_NAMES = NF_COLORS.keys()
@@ -69,14 +71,15 @@ def read_general_file(path, n_ues_line = 'N_UES', n_iterations_line = 'N_ITERATI
 
 
 def calc_conf_int(df, col, n_samples, confidence=0.95):
-    print(df[col, 'std'])
+    # print(df[col, 'std'])
     h = (df[col, 'std']/np.sqrt(n_samples)) * scipy.stats.t.ppf((1 + confidence) / 2., n_samples-1)
     m = df[col, 'mean']
     return m - h, m + h, h
 
 
-def concat_multiple_logs(test_dir: Path, read_sample_func: Callable, **kwargs):
+def concat_multiple_logs(test_dir: Path, read_sample_func: Callable, n_samples=20, **kwargs):
     stat_df = pd.DataFrame()
+    n_reads = 0
     for sample_dir in test_dir.iterdir():
         # garbage
         if not sample_dir.name.startswith('test'):
@@ -86,6 +89,11 @@ def concat_multiple_logs(test_dir: Path, read_sample_func: Callable, **kwargs):
         print(f'[DEBUG] read {sample_dir}...')
         df = read_sample_func(sample_dir, **kwargs)
         stat_df = pd.concat((stat_df, df))
+
+        n_reads += 1
+        if n_reads >= n_samples:
+            break
+
     return stat_df
 
 

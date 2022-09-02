@@ -4,13 +4,21 @@ import subprocess
 from datetime import datetime, timedelta
 import sys
 import matplotlib.pyplot as plt
+import matplotlib
 import pandas as pd
 import numpy as np
 
 import utils
 
-BEFORE_TEST_TIME = 1
-AFTER_TEST_TIME = 3
+matplotlib.rcParams.update({'font.size': 28})
+
+
+BEFORE_TEST_TIME = -25
+
+AFTER_TEST_TIME = -5
+
+# BEFORE_TEST_TIME = -2
+# AFTER_TEST_TIME = -3
 
 DROP_NFS = ['ue', 'gnb01']  # do not plot these nfs
 COLORS = ['r', 'g', 'b', 'c', 'm', 'y', 'k',
@@ -66,7 +74,7 @@ def read_dommemstat(virsh_domemm_file, start_time, end_time) -> pd.DataFrame:
 def read_mem_sample(sample_dir: Path):
     virsh_domemm_file = utils.find_in_iterdir(sample_dir, 'dommenstat')
     general_file = utils.find_in_iterdir(sample_dir, 'general')
-    stime, n_ues, duration = utils.read_general_file(general_file, n_iterations_line='N_ITERATIONS')  #N_ITERATIONS DURATION
+    stime, n_ues, duration = utils.read_general_file(general_file, n_iterations_line='DURATION')  #N_ITERATIONS DURATION
     etime = stime + timedelta(0, duration + 5)
     df = read_dommemstat(virsh_domemm_file, stime, etime)
     first_timestamp = df['timestamp'].iloc[0]
@@ -83,15 +91,14 @@ def read_virt_top(sample_dir):
     prepare_virt_top(virt_top_file)
 
     # should be moved
-    start_time, n_ues, duration = utils.read_general_file(general_file, n_iterations_line='N_ITERATIONS')  #DURATION
+    start_time, n_ues, duration = utils.read_general_file(general_file, n_iterations_line='DURATION')  #N_ITERATIONS DURATION
     start_time -= timedelta(0, BEFORE_TEST_TIME)
     end_time = start_time + timedelta(0, duration + AFTER_TEST_TIME)
-
     dateparse = lambda x: datetime.strptime(x, '%H:%M:%S')
     df_virt = pd.read_csv(virt_top_file,
                         parse_dates=[1],
                         date_parser=dateparse)
-    mask = df_virt['Time'].between(start_time , end_time)
+    mask = df_virt['Time'].between(start_time, end_time)
     df_tidy = df_virt[mask]
     # print(df_tidy['Time'].iloc[0])
 
@@ -200,10 +207,10 @@ def plot(df, stat, nf_names_cols, ylabel, title, save=False):
     plt.show()
 
 
-def plot_long(df, stat, ylabel, title, save=False, xlabel='Czas [s]', x='delta_', yerr='%CPU_err'):
+def plot_long(df, stat, ylabel, title, ymax, tick=0.5, save=False, xlabel='Czas [s]', x='delta_', yerr='%CPU_err'):
     nf_names = df['Domain name_'].unique()
 
-    _, ax = plt.subplots(1)
+    _, ax = plt.subplots(1, figsize=(14,10))
     for nf_name in nf_names:
         cpu_utili_nf = df[df['Domain name_'] == nf_name]
         if nf_name in DROP_NFS:
@@ -222,59 +229,108 @@ def plot_long(df, stat, ylabel, title, save=False, xlabel='Czas [s]', x='delta_'
             yerr=yerr,
             capsize=2
         )
+    plt.legend(loc = "upper right")
+    ax = plt.gca()
+    ax.set_ylim([-0.5, ymax+0.01])
+    ax.set_yticks(np.arange(0.0, ymax+0.01, tick))
+    ax.yaxis.set_major_formatter(plt.FormatStrFormatter('%.2f'))
     if save:
         fn = title.replace(' ', '_')
+        fn += 'v3'
         plt.savefig(f'{fn}.png')
     plt.show()
 
 
+def prepare_and_plot(test_dir, test, save=True):
+    df = prepare_virt_df(test_dir)
+    print(df['delta'])
+    df.columns = df.columns.map('_'.join)
+    plot_long(df, '%CPU_mean', 'Użycie CPU [%]', f'Porównanie obciążenia procesora przez funkcje sieciowe {test}', save=save)
+    # plot_long(df, 'Net RXBY_mean', 'Tx [B/s]', f'Porównanie obciążenia interfejsów sieciowych {test}', save=save, yerr='Net TXBY_err')
+    # plot_long(df, 'Net TXBY_mean', 'Rx [B/s]', f'Porównanie obciążenia interfejsów sieciowych {test}', save=save, yerr='Net RXBY_err')
+
+IDLE = False
+DO_10_30 = False
+DO_20_30 = False
+DO_30_30 = False
+TEST_UPLANE = True
+
+suffix = '38'
+title_cpu = 'Porównanie obciążenia procesora przez funkcje sieciowe {} UE rejestracja vm {}'
 # df = read_virt_top(TEST_DIR)
 # test_dir = Path('..', 'vms-split', 'test-idle')
-test_dir_10_30 = Path('..', 'vms-split', 'test-connect-ues', '10_30_v2')
-test_dir_20_30 = Path('..', 'vms-split', 'test-connect-ues', '20_30')
-test_dir_30_30 = Path('..', 'vms-split', 'test-connect-ues', '30_30')
-test_dir_idle = Path('..', 'vms-split', 'test-idle')
-# test_dir_idle = Path('..', 'vms-split', 'test-idle')
-df1 = prepare_virt_df(test_dir_10_30)
-df2 = prepare_virt_df(test_dir_20_30)
-df3 = prepare_virt_df(test_dir_30_30)
-df_idle = prepare_virt_df(test_dir_idle)
-df1.columns = df1.columns.map('_'.join)
-df2.columns = df2.columns.map('_'.join)
-df3.columns = df3.columns.map('_'.join)
-df_idle.columns = df_idle.columns.map('_'.join)
-plot_long(df1, '%CPU_mean', 'Użycie CPU [%]', f'Porównanie obciążenia procesora przez funkcje sieciowe 10 UE rejestracja vm', True)
-plot_long(df2, '%CPU_mean', 'Użycie CPU [%]', f'Porównanie obciążenia procesora przez funkcje sieciowe 20 UE rejestracja vm', True)
-plot_long(df3, '%CPU_mean', 'Użycie CPU [%]', f'Porównanie obciążenia procesora przez funkcje sieciowe 30 UE rejestracja vm', True)
-# plot_long(df_idle, '%CPU_mean', 'Użycie CPU [%]', f'Porównanie obciążenia procesora w stanie bezczynności', True)
-# caution!!! - virt-top probably reports from hypervisor perspective, so Tx (hypervisor) -> Rx (vm)
-plot_long(df1, 'Net RXBY_mean', 'Tx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 10 UE rejestracja Tx vm', save=True, yerr='Net TXBY_err')
-plot_long(df1, 'Net TXBY_mean', 'Rx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 10 UE rejestracja Rx vm', save=True, yerr='Net RXBY_err')
-plot_long(df2, 'Net RXBY_mean', 'Tx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 20 UE rejestracja Tx vm', save=True, yerr='Net TXBY_err')
-plot_long(df2, 'Net TXBY_mean', 'Rx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 20 UE rejestracja Rx vm', save=True, yerr='Net RXBY_err')
-plot_long(df3, 'Net RXBY_mean', 'Tx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 30 UE rejestracja Tx vm', save=True, yerr='Net TXBY_err')
-plot_long(df3, 'Net TXBY_mean', 'Rx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 30 UE rejestracja Rx vm', save=True, yerr='Net RXBY_err')
+test_uplane_dir = Path('..', 'vms-split', 'test-uplane', '2')
 
+# # test_dir_idle = Path('..', 'vms-split', 'test-idle')
+# prepare_and_plot(test_uplane_dir, 'test uplane')
+
+# caution!!! - virt-top probably reports from hypervisor perspective, so Tx (hypervisor) -> Rx (vm)
 # print(prepare_df_mem(test_dir_30_30))
 
 # # dfu = df.reset_index()
 # df_vms = df.copy()
-df_idle = df_idle.groupby(['Domain name_']).mean().reset_index()
-print(df_idle)
-df_idle.to_csv('mean_idle_vms.csv')
+
+#caution!!! - virt-top probably reports from hypervisor perspective, so Tx (hypervisor) -> Rx (vm)
+if DO_10_30:
+    test_dir_10_30 = Path('..', 'vms-split', 'test-connect-ues', '10_30_v2')
+    df1 = prepare_virt_df(test_dir_10_30)
+    df1.columns = df1.columns.map('_'.join)
+    plot_long(df1, '%CPU_mean', 'Użycie CPU [%]',
+              title_cpu.format(10, suffix), 2.0, 0.25, save=True)
+    # plot_long(df1, 'Net RXBY_mean', 'Tx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 10 UE rejestracja Tx vm', save=True, yerr='Net TXBY_err')
+    # plot_long(df1, 'Net TXBY_mean', 'Rx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 10 UE rejestracja Rx vm', save=True, yerr='Net RXBY_err')
+
+if DO_20_30:
+    test_dir_20_30 = Path('..', 'vms-split', 'test-connect-ues', '20_30')
+    df2 = prepare_virt_df(test_dir_20_30)
+    df2.columns = df2.columns.map('_'.join)
+    plot_long(df2, '%CPU_mean', 'Użycie CPU [%]',
+              title_cpu.format(20, suffix), 4.0, 0.5, save=True)
+    # plot_long(df2, 'Net RXBY_mean', 'Tx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 20 UE rejestracja Tx vm', save=True, yerr='Net TXBY_err')
+    # plot_long(df2, 'Net TXBY_mean', 'Rx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 20 UE rejestracja Rx vm', save=True, yerr='Net RXBY_err')
+
+if DO_30_30:
+    test_dir_30_30 = Path('..', 'vms-split', 'test-connect-ues', '30_30')
+    df3 = prepare_virt_df(test_dir_30_30)
+    df3.columns = df3.columns.map('_'.join)
+    plot_long(df3, '%CPU_mean', 'Użycie CPU [%]',
+              title_cpu.format(30, suffix), 6.0, 0.75, save=True)
+    # plot_long(df3, 'Net RXBY_mean', 'Tx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 30 UE rejestracja Tx vm', save=True, yerr='Net TXBY_err')
+    # plot_long(df3, 'Net TXBY_mean', 'Rx [B/s]', f'Porównanie obciążenia interfejsów sieciowych 30 UE rejestracja Rx vm', save=True, yerr='Net RXBY_err')
+
+
+if IDLE:
+    test_dir_idle = Path('..', 'vms-split', 'test-idle')
+    df_idle = prepare_virt_df(test_dir_idle)
+    df_idle.columns = df_idle.columns.map('_'.join)
+    # plot_long(df_idle, '%CPU_mean', 'Użycie CPU [%]', f'Porównanie obciążenia procesora w stanie bezczynności', True)
+    df_idle = df_idle.groupby(['Domain name_']).mean().reset_index()
+    print(df_idle)
+    df_idle.to_csv('mean_idle_vms2.csv')
+
+if TEST_UPLANE:
+    test_uplane_dir = Path('..', 'vms-split', 'test-uplane', '2')
+    # prepare_and_plot(test_uplane_dir, 8.0, 1.0, 'test uplane')
+    df = prepare_virt_df(test_uplane_dir)
+    df.columns = df.columns.map('_'.join)
+    plot_long(df, '%CPU_mean', 'Użycie CPU [%]',
+              'Porównanie obciążenia procesora przez funkcje sieciowe uplane test', 8.5, 1.0, save=True)
+
+
 
 # virsh_domemm_file = utils.find_in_iterdir(TEST_DIR, 'dommenstat')
 # general_file = utils.find_in_iterdir(TEST_DIR, 'general')
 # stime, n_ues, duration = utils.read_general_file(general_file, n_iterations_line='DURATION')
 # etime = stime + timedelta(0, duration + 1)
 
-test_dir = Path('..', 'vms-split', 'test-idle')
+# test_dir = Path('..', 'vms-split', 'test-idle')
 
-df_mem = prepare_df_mem(test_dir)
-df_mem = df_mem[~df_mem['nf_name'].str.contains('ue')]
-df_mem = df_mem[~df_mem['nf_name'].str.contains('gnb')]
-df_mem.columns = df_mem.columns.map('_'.join)
-df_mem.to_csv('mem_vms_idle.csv')
+# df_mem = prepare_df_mem(test_dir)
+# df_mem = df_mem[~df_mem['nf_name'].str.contains('ue')]
+# df_mem = df_mem[~df_mem['nf_name'].str.contains('gnb')]
+# df_mem.columns = df_mem.columns.map('_'.join)
+# print(df_mem)
+# df_mem.to_csv('mem_vms_idle.csv')
 
 
 # nf_names_cols = [col for col in df if col.startswith('Domain name')]

@@ -33,5 +33,3 @@ def read_dommemstat(stat_path, end_time, start_time):
             df_dict['nf_name'] = key
             df_dict['mem'] = val / 1024
     print(df_dict)
-
-

@@ -3,10 +3,15 @@ import re
 
 from datetime import datetime, timedelta
 import sys
+import matplotlib
 import matplotlib.pyplot as plt
+import numpy
 import pandas as pd
 
 import utils
+
+matplotlib.rcParams.update({'font.size': 28})
+
 
 HEADER_LINE = 'NAME'
 TIMESTAMP_LINE = ':'
@@ -17,8 +22,8 @@ COLORS = ['r', 'g', 'b', 'c', 'm', 'y', 'k',
           'lime', 'dodgerblue', 'peru', 'indigo',
           'crimson', 'slategray']
 
-BEFORE_TEST_TIME = 5
-AFTER_TEST_TIME = 10
+BEFORE_TEST_TIME = -3
+AFTER_TEST_TIME = -5
 
 def read_docker_stats(start_time, end_time, docker_stats_file):
     df_dict = {
@@ -103,29 +108,36 @@ def read_docker_stats(start_time, end_time, docker_stats_file):
     return df
 
 
-def plot(df, nf_names, y, title, ylabel, save=False, yerr='cpu_err'):
-    _, ax = plt.subplots(1)
+def plot(df, nf_names, y, title, ylabel, ymax, tick=0.5, save=False, yerr='cpu_err'):
+    _, ax = plt.subplots(1, figsize=(14, 10))
     for idx, nf_name in enumerate(nf_names):
         if nf_name in DROP_NFS:
             continue
+        nf_label = nf_name
+        if nf_name == 'mongo':
+            nf_label = 'db'
 
         nf_stats= df[df['nf_name_'] == nf_name]
         nf_stats.plot(
             x='delta_mean',
             y=y,
-            label=nf_name,
+            label=nf_label,
             ax=ax,
-            color=utils.get_color(nf_name),
+            color=utils.get_color(nf_label),
             fmt='--',
-            title=title,
+            # title=title,
             xlabel='Czas [s]',
             ylabel=ylabel,
             yerr=yerr,
-            capsize=2,
+            capsize=5,
         )
+    ax = plt.gca()
+    ax.set_ylim([0, ymax+0.01])
+    ax.set_yticks(numpy.arange(0, ymax+0.01, tick))
+    plt.legend(loc = "upper right")
     if save:
         fn = title.replace(' ', '_')
-        plt.savefig(f'{fn}.png')
+        plt.savefig(f'{fn}_v3.png')
     plt.show()
 
 
@@ -136,7 +148,7 @@ def _to_ms_numeric_timedelta(delta):
 def read_sample(sample_dir: Path, end_time_extra_time: int = 5):
     docker_stats_file = utils.find_in_iterdir(sample_dir, 'docker_stats')
     general_file = utils.find_in_iterdir(sample_dir, 'general')
-    start_time, n_ues, duration = utils.read_general_file(general_file, n_iterations_line='N_ITERATIONS')  #N_ITERATIONS DURATION
+    start_time, n_ues, duration = utils.read_general_file(general_file, n_iterations_line='DURATION')  #N_ITERATIONS DURATION
     start_time = start_time - timedelta(0, BEFORE_TEST_TIME)
     end_time = start_time + timedelta(0, duration + AFTER_TEST_TIME)
 
@@ -156,6 +168,13 @@ def prepare_df(test_dir: Path):
         return len(df)
 
     stat_df = utils.concat_multiple_logs(test_dir, read_sample).fillna(0)  # long format
+    pd.set_option('display.max_rows', 500)
+    # stat_df.loc[(stat_df.nf_name == 'upf') & (stat_df.cpu < 0.1), 'cpu'] = 1.6  # ONLY UPLANE MEASUREMENT
+    # print('[DEBUG] stat_df:', stat_df.loc[stat_df.nf_name == 'upf', 'cpu' < 0.1])
+    # print('[DEBUG] stat_df:', stat_df[stat_df.nf_name == 'upf']['cpu'])
+    # print('[DEBUG] stat_df:', stat_df[stat_df.nf_name == 'upf']['cpu'].replace(0.0, 1.5))
+    # print('[DEBUG] stat_df:', stat_df.loc[stat_df['nf_name'] == 'upf'])
+    # print('[DEBUG] stat_df:', stat_df.loc[stat_df.nf_name == 'upf', 'cpu'].replace(0.0, 1.5))
     tidy_df = stat_df.groupby(['index', 'nf_name']).agg(['mean', 'std']).reset_index()
     n_samples = _get_number_of_samples(stat_df, 'amf')
     tidy_df['cpu', 'ci_lower'], tidy_df['cpu', 'ci_upper'], tidy_df['cpu', 'err'] = utils.calc_conf_int(tidy_df, 'cpu', n_samples)
@@ -165,32 +184,68 @@ def prepare_df(test_dir: Path):
     return tidy_df
 
 
+test_dir_30_30 = Path('..', 'containers', 'test-connect-ues', '30_30')
 test_dir_20_30 = Path('..', 'containers', 'test-connect-ues', '20_30')
 test_dir_10_30 = Path('..', 'containers', 'test-connect-ues', '10_30')
+test_dir_uplane = Path('..', 'containers', 'test-uplane')
 
-save = False
-TEST_IDLE_DIR =  Path('..', 'containers', 'test-idle')
-df_idle = prepare_df(TEST_IDLE_DIR)
+IDLE = False
+DO_10_30 = False
+DO_20_30 = False
+DO_30_30 = False
+TEST_UPLANE = True
+
+# df_uplane = prepare_df(test_dir_uplane)
+
+def prepare_and_plot(df, n_ues, ymax, tick, save=True):
+    nf_names = df['nf_name'].unique()
+    df = df[~df['nf_name'].str.contains('ue')]
+    df = df[~df['nf_name'].str.contains('gnb')]
+    df.columns = df.columns.map('_'.join)
+    plot(df, nf_names, 'cpu_mean',
+         f'Porównanie obciążenia procesora [docker,{n_ues}ue]', 'Użycie CPU [%]',
+         ymax=ymax,
+         tick=tick,
+         save=save)
+
+# TEST_IDLE_DIR =  Path('..', 'containers', 'test-idle')
+# df_idle = prepare_df(TEST_IDLE_DIR)
+if DO_10_30:
+    df_10_30 = prepare_df(test_dir_10_30)
+    prepare_and_plot(df_10_30, 10, 2.0, 0.25)
+
+if DO_20_30:
+    df_20_30 = prepare_df(test_dir_20_30)
+    prepare_and_plot(df_20_30, 20, 4.0, 0.5)
+
+if DO_30_30:
+    df_30_30 = prepare_df(test_dir_30_30)
+    prepare_and_plot(df_30_30, 30, 6.0, 0.75)
+
+if TEST_UPLANE:
+    df_uplane = prepare_df(test_dir_uplane)
+    print(df_uplane)
+    prepare_and_plot(df_uplane, 'uplane', 2.0, 0.25)
+
 # df_20_30 = prepare_df(test_dir_20_30)
-# df_10_30 = prepare_df(test_dir_10_30)
+# df_30_30 = prepare_df(test_dir_30_30)
+
+
 # nf_names = df_10_30['nf_name'].unique()
-# nf_names = df_20_30['nf_name'].unique()
 # df_10_30 = df_10_30[~df_10_30['nf_name'].str.contains('ue')]
 # df_10_30 = df_10_30[~df_10_30['nf_name'].str.contains('gnb')]
-# df_20_30 = df_20_30[~df_20_30['nf_name'].str.contains('ue')]
-# df_20_30 = df_20_30[~df_20_30['nf_name'].str.contains('gnb')]
-mean_df = df_idle.groupby('nf_name').mean()
-mean_df.columns = mean_df.columns.map('_'.join)
+# mean_df = df_idle.groupby('nf_name').mean()
+# mean_df.columns = mean_df.columns.map('_'.join)
 # df_10_30.columns = df_10_30.columns.map('_'.join)
-# df_20_30.columns = df_20_30.columns.map('_'.join)
-mean_df.to_csv('mean_idle_docker.csv')
-
+# mean_df.to_csv('mean_idle_docker.csv')
+# print(df)
 # print(df.columns)
 # with pd.option_context('display.max_rows', None, 'display.max_columns', None):
-#     print(df_20_30[df_20_30['nf_name_'] == 'ausf'])
-# plot(df_10_30, nf_names, 'cpu_mean', f'Porównanie obciążenia procesora [docker,10ue]', 'Obciążenie systemu [%]', save=save)
-# plot(df_20_30, nf_names, 'cpu_mean', f'Porównanie obciążenia procesora [docker,20ue]', 'Obciążenie systemu [%]', save=save)
+#     print(df[df['nf_name_'] == 'ausf'])
+# plot(df, nf_names, 'cpu_mean', f'Porównanie obciążenia procesora [docker,uplane]', 'Użycie CPU [%]', save=save)
+# plot(df, nf_names, 'cpu_mean', f'Porównanie obciążenia procesora [docker,20ue]', 'Użycie CPU [%]', save=save)
 # plot(df_10_30, nf_names, 'net_io_tx_per_s_mean', f'Porównanie obciążenia procesora [docker,10ue,tx]', 'Tx [B/s]', yerr='net_io_tx_per_s_err', save=save)
 # plot(df_10_30, nf_names, 'net_io_rx_per_s_mean', f'Porównanie obciążenia procesora [docker,10ue,rx]', 'Rx [B/s]', yerr='net_io_rx_per_s_err', save=save)
-# plot(df_20_30, nf_names, 'net_io_tx_per_s_mean', f'Porównanie obciążenia interfejsów docker 20ue tx', 'Tx [B/s]', yerr='net_io_tx_per_s_err', save=save)
-# plot(df_20_30, nf_names, 'net_io_rx_per_s_mean', f'Porównanie obciążenia interfejsów docker 20ue rx', 'Rx [B/s]', yerr='net_io_rx_per_s_err', save=save)
+# plot(df, nf_names, 'net_io_tx_per_s_mean', f'Porównanie obciążenia interfejsów docker 30ue tx', 'Tx [B/s]', yerr='net_io_tx_per_s_err', save=save)
+# plot(df, nf_names, 'net_io_rx_per_s_mean', f'Porównanie obciążenia interfejsów docker 30ue rx', 'Rx [B/s]', yerr='net_io_rx_per_s_err', save=save)
+

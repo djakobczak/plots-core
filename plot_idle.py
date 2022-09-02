@@ -1,43 +1,49 @@
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 
 BAR_WIDTH = 0.35       # the width of the bars
 
+matplotlib.rcParams.update({'font.size': 22})
+
+
 
 def plot_cpu(df_docker_cpu, df_vms_cpu, nf_names):
-    fig = plt.figure()
+    fig = plt.figure(figsize=(14, 8))
     ax = fig.add_subplot(111)
     ind = np.arange(11)  # the x locations for the groups
     docker_plot = ax.bar(ind, df_docker_cpu['cpu_mean'], BAR_WIDTH, color='royalblue', yerr=df_docker_cpu['cpu_err'], capsize=3)
     vm_plot = ax.bar(ind+BAR_WIDTH, df_vms_cpu['cpu_mean'], BAR_WIDTH, color='seagreen', yerr=df_vms_cpu['cpu_err'], capsize=3)
-    ax.set_ylabel('CPU [%]')
+    ax.set_ylabel('Użycie CPU [%]')
     ax.set_xlabel('Funkcje sieciowe')
-    ax.set_title('Zużycie procesora przez funkcje sieciowe w stanie bezczynności')
+    # ax.set_title('Zużycie procesora przez funkcje sieciowe w stanie bezczynności')
     ax.set_xticks(ind + BAR_WIDTH / 2)
     ax.set_xticklabels(nf_names)
+    ax.set_ylim([0, 0.15])
+    ax.set_yticks(np.arange(0, 0.15, 0.02))
     ax.legend((docker_plot[0], vm_plot[0]), ('docker', 'kvm'))
-    plt.savefig('idle_cpu_usage.png')
+    plt.savefig('idle_cpu_usage_v3.png')
     plt.show()
 
 
 def plot_mem(df_docker_mem, df_vms_mem, nf_names):
-    fig = plt.figure()
+    fig = plt.figure(figsize=(14, 8))
     ax = fig.add_subplot(111)
     ind = np.arange(11)  # the x locations for the groups
     docker_plot = ax.bar(ind, df_docker_mem['mem_mean'], BAR_WIDTH, color='royalblue', yerr=df_docker_mem['mem_err'], capsize=3)
     vm_plot = ax.bar(ind+BAR_WIDTH, df_vms_mem['mem_mean'], BAR_WIDTH, color='seagreen', yerr=df_vms_mem['mem_err'], capsize=3)
-    ax.set_ylabel('Zużycie pamięci [MiB]')
+    ax.set_ylabel('Użycie pamięci [MiB]')
     ax.set_xlabel('Funkcje sieciowe')
-    ax.set_title('Zużycie pamięci przez funkcje sieciowe w stanie bezczynności')
+    # ax.set_title('Zużycie pamięci przez funkcje sieciowe w stanie bezczynności')
     ax.set_xticks(ind + BAR_WIDTH / 2)
     ax.set_xticklabels(nf_names)
     ax.legend((docker_plot[0], vm_plot[0]), ('docker', 'kvm'))
-    plt.savefig('idle_mem_usage.png')
+    plt.savefig('idle_mem_usage_v3.png')
     plt.show()
 
 
-df_vms = pd.read_csv('mean_idle_vms.csv')
+df_vms = pd.read_csv('mean_idle_vms2.csv')
 df_vms_mem = pd.read_csv('mem_vms_idle.csv')
 df_docker = pd.read_csv('mean_idle_docker.csv')
 # in order to combine both df we need to do some processing to match
@@ -60,5 +66,5 @@ df_vms_cpu['nf_name'] = nf_names
 
 
 df_docker_mem = df_docker[['nf_name', 'mem_mean', 'mem_ci_lower', 'mem_ci_upper', 'mem_err']]
-plot_mem(df_docker_mem, df_vms_mem, nf_names)
+# plot_mem(df_docker_mem, df_vms_mem, nf_names)
 plot_cpu(df_docker_cpu, df_vms_cpu, nf_names)
